@@ -1,0 +1,34 @@
+[project]
+name = "tracerag"
+version = "0.1.0"
+description = "Vectorless, reasoning-driven RAG with an auditable retrieval trace and a per-sentence evidence ledger."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Supereggcat" }]
+keywords = ["rag", "retrieval", "llm", "agents", "vectorless", "citations"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["pypdf>=5.0"]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9"]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+tracerag = "tracerag.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]

@@ -1,0 +1,24 @@
+{"doc":"atlas-handbook.md","question":"发票怎么开?","expect_any":["发票开具"],"difficulty":"heading-only"}
+{"doc":"atlas-handbook.md","question":"退款到账要多久?","expect_any":["财务侧审批"],"difficulty":"single"}
+{"doc":"atlas-handbook.md","question":"客户怎么提交退款?","expect_any":["客户侧申请"],"difficulty":"heading-only"}
+{"doc":"atlas-handbook.md","question":"这些数据要保留多长时间?","expect_any":["数据保留"],"difficulty":"heading-only"}
+{"doc":"atlas-handbook.md","question":"一级事故应该找谁处理?","expect_any":["升级路径"],"difficulty":"heading-only"}
+{"doc":"atlas-handbook.md","question":"导出文件需要谁审批?","expect_any":["数据导出"],"difficulty":"single"}
+{"doc":"atlas-handbook.md","question":"原路退回和对公转账分别多久?","expect_any":["财务侧审批"],"difficulty":"single"}
+{"doc":"orbit-api-notes.md","question":"How many requests per minute am I allowed to make?","expect_any":["Rate Limiting"],"difficulty":"heading-only"}
+{"doc":"orbit-api-notes.md","question":"What happens if a delivery attempt fails?","expect_any":["Webhook Retries"],"difficulty":"heading-only"}
+{"doc":"orbit-api-notes.md","question":"Can I safely resend the same write?","expect_any":["Idempotency"],"difficulty":"heading-only"}
+{"doc":"orbit-api-notes.md","question":"How long until a cursor stops working?","expect_any":["Pagination"],"difficulty":"single"}
+{"doc":"orbit-api-notes.md","question":"Does a batch succeed or fail as a whole?","expect_any":["Partial Failures"],"difficulty":"heading-only"}
+{"doc":"helios-annual-report.md","question":"公司盈利能力怎么样?","expect_any":["盈利水平"],"difficulty":"heading-only"}
+{"doc":"helios-annual-report.md","question":"研发投入是多少?","expect_any":["盈利水平"],"difficulty":"single"}
+{"doc":"helios-annual-report.md","question":"创始人持股比例是多少?","expect_any":["股权结构"],"difficulty":"single"}
+{"doc":"helios-annual-report.md","question":"员工总数和离职率是多少?","expect_any":["员工情况"],"difficulty":"single"}
+{"doc":"helios-annual-report.md","question":"中小企业业务增长多少?","expect_any":["中小企业业务"],"difficulty":"single"}
+{"doc":"helios-annual-report.md","question":"下一年的收入指引是多少?","expect_any":["下一年度展望"],"difficulty":"heading-only"}
+{"doc":"atlas-handbook.md","question":"从客户提交退款请求到财务审批完成,最长需要多少个工作日?","expect_all":["客户侧申请","财务侧审批"],"difficulty":"multi"}
+{"doc":"atlas-handbook.md","question":"如果客户要求删除自己的数据,处理时限和数据存续期分别是多久?","expect_all":["数据保留"],"difficulty":"multi"}
+{"doc":"orbit-api-notes.md","question":"A write fails with a server error: may I retry it, and what protects me from a duplicate charge?","expect_all":["Error Taxonomy","Idempotency"],"difficulty":"multi"}
+{"doc":"orbit-api-notes.md","question":"How are long running imports and oversized page sizes handled?","expect_all":["Timeouts","Pagination"],"difficulty":"multi"}
+{"doc":"helios-annual-report.md","question":"收入结构和盈利水平分别是什么情况?","expect_all":["收入结构","盈利水平"],"difficulty":"multi"}
+{"doc":"helios-annual-report.md","question":"企业业务和中小企业业务的增长分别是多少?","expect_all":["企业业务","中小企业业务"],"difficulty":"multi"}

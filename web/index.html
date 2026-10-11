@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>TraceRAG</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><i data-lucide="git-fork"></i></span>
+      <span class="brand-name">TraceRAG</span>
+    </div>
+
+    <div class="topbar-controls">
+      <div class="field field-doc">
+        <label class="field-label" for="doc-select">Document</label>
+        <select id="doc-select" class="select"></select>
+      </div>
+
+      <div class="field field-mode">
+        <span class="field-label" id="mode-label">Mode</span>
+        <div class="segmented" role="group" aria-labelledby="mode-label" id="mode-group">
+          <button type="button" class="seg" data-mode="lexical">Lexical</button>
+          <button type="button" class="seg is-active" data-mode="hybrid" aria-pressed="true">Hybrid</button>
+          <button type="button" class="seg" data-mode="reasoning">Reasoning</button>
+        </div>
+      </div>
+
+      <div class="field field-narrow">
+        <label class="field-label" for="top-k">Evidence</label>
+        <input id="top-k" class="number" type="number" min="1" max="12" step="1" value="5">
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <span id="status-pill" class="pill">
+        <i data-lucide="loader-circle" class="spin"></i><span id="status-text">Connecting</span>
+      </span>
+      <button type="button" id="upload-btn" class="btn" title="Upload a document">
+        <i data-lucide="upload"></i><span>Upload</span>
+      </button>
+      <input id="file-input" type="file" hidden
+             accept=".md,.markdown,.txt,.text,.rst,.log,.pdf,.html,.htm">
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel library">
+      <div class="panel-head">
+        <h2>Library</h2>
+        <span id="doc-count" class="count">0</span>
+      </div>
+      <div class="panel-body">
+        <ul id="doc-list" class="doc-list"></ul>
+        <div class="panel-head panel-head-inner">
+          <h2>Outline</h2>
+          <span id="outline-count" class="count">0</span>
+        </div>
+        <div id="outline" class="outline"></div>
+      </div>
+    </aside>
+
+    <section class="panel workspace">
+      <form id="ask-form" class="askbar" autocomplete="off">
+        <i data-lucide="search" class="askbar-icon" aria-hidden="true"></i>
+        <input id="question" class="ask-input" type="text" placeholder="Question"
+               aria-label="Question" maxlength="2000">
+        <button type="submit" id="ask-btn" class="btn btn-primary">
+          <i data-lucide="corner-down-left"></i><span>Ask</span>
+        </button>
+      </form>
+
+      <div class="panel-body" id="answer-body">
+        <div id="empty-state" class="empty">
+          <i data-lucide="file-search" class="empty-icon"></i>
+          <p id="empty-text">No document indexed</p>
+        </div>
+        <div id="answer-region" hidden>
+          <article class="answer">
+            <div class="answer-head">
+              <span id="answer-mode" class="tag">hybrid</span>
+              <span id="answer-support" class="pill pill-ok"></span>
+            </div>
+            <div id="answer-text" class="answer-text"></div>
+          </article>
+
+          <section class="block">
+            <div class="block-head">
+              <h3>Evidence ledger</h3>
+              <span id="ledger-count" class="count">0</span>
+            </div>
+            <ul id="ledger" class="ledger"></ul>
+          </section>
+
+          <section class="block">
+            <div class="block-head">
+              <h3>Citations</h3>
+              <span id="citation-count" class="count">0</span>
+            </div>
+            <ul id="citations" class="citations"></ul>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel inspector">
+      <div class="panel-head">
+        <h2>Retrieval trace</h2>
+        <span id="trace-count" class="count">0</span>
+      </div>
+      <div class="panel-body">
+        <ol id="trace-list" class="trace"></ol>
+      </div>
+      <div class="panel-foot" id="usage"></div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/static/vendor/lucide.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+TraceRAG
+========
+
+This project is an original implementation written from scratch.
+
+Conceptual inspiration
+----------------------
+
+The idea of replacing a similarity-based vector index with a hierarchical
+document tree that an LLM navigates by reasoning was popularised by
+PageIndex (https://github.com/VectifyAI/PageIndex), released under the MIT
+License, Copyright (c) 2025 Vectify AI.
+
+TraceRAG re-implements that idea with a different architecture and a
+different feature set. It does not contain source code copied from
+PageIndex or from any other project. The upstream project is credited here
+and in the README because crediting inspiration is the honest thing to do,
+not because it is legally required for an independent re-implementation.
+
+What is original to TraceRAG
+----------------------------
+
+1. An auditable retrieval trace: every candidate node visited during a
+   query is recorded with its score, its scorer and the reason it was kept
+   or pruned, and the trace is returned with the answer.
+2. A per-sentence evidence ledger: each sentence of the generated answer is
+   checked against the text of the nodes it cites, and sentences without
+   support are flagged instead of being silently trusted.
+3. Hybrid routing: a pure-Python BM25 router narrows each tree level before
+   any model call, so the system degrades to a fully offline deterministic
+   retriever when no API key is configured.
+4. A built-in evaluation harness that scores the tree walker against a
+   naive fixed-window chunking baseline on the same corpus.
+5. Token and cost accounting per query.
+
+Third-party components
+----------------------
+
+The web UI vendors the Lucide icon set (https://lucide.dev), which is
+released under the ISC License.
