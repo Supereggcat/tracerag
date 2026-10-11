@@ -2,129 +2,108 @@
 
 [![tests](https://github.com/Supereggcat/tracerag/actions/workflows/tests.yml/badge.svg)](https://github.com/Supereggcat/tracerag/actions/workflows/tests.yml)
 
-**Vectorless retrieval that shows its work.**
+**不用向量库的检索增强生成,把每一步推理都摊开给你看。**
 
-TraceRAG turns a document into a section tree, walks that tree with reasoning instead of
-cosine similarity, and returns three things with every answer: the answer, a numbered list
-of the sections it came from, and a trace of every decision the retriever made along the way.
-It then re-reads its own answer sentence by sentence and flags anything the cited sections do
-not actually support.
+TraceRAG 把一份文档解析成章节树,让模型像人翻目录一样逐层推理找到相关段落,然后把三样东西一起交给你:
+答案、带编号的引用来源、以及检索过程中每一个候选章节的取舍记录。最后它还会把自己的答案逐句拿回去
+和引用原文核对,对不上的句子直接标出来,而不是默认可信。
 
-No vector database. No embedding model. No chunk-and-hope. It runs end to end with no API key
-at all, and gets better when you give it one.
+没有向量数据库,没有 embedding 模型,也不做无脑切块。**不配任何 API Key 也能端到端跑通**,配上模型之后效果更好。
 
-![TraceRAG answering a question about a refund policy](docs/screenshot.png)
+![TraceRAG 回答一个关于退款时效的问题](docs/screenshot.png)
 
-## Why
+## 为什么不用向量检索
 
-Similarity is not relevance. A question about *why* refunds are slow and a paragraph about
-refund SLAs share most of their vocabulary, while the paragraph that actually answers the
-question may share almost none of it. Embedding search optimises for the first thing and
-quietly loses the second.
+相似不等于相关。一个问"为什么退款这么慢"的问题,和一段讲退款 SLA 的正文,词汇高度重合;而真正能
+回答它的那个段落,可能一个字都对不上。向量检索优化的恰恰是前者,后者会被静默丢掉。
 
-The bet this project makes is that the structure of a document already encodes most of what
-you need. A heading like `6.1 Data retention` is a human-written label for the question that
-section answers. If retrieval reads the structure instead of shredding it, it can find the
-right section even when the prose inside uses completely different words.
+这个项目的赌注是:**文档本身的结构已经编码了大部分你需要的信息**。像 `6.1 数据保留` 这样的标题,
+是人写给"哪些问题应该在这一节回答"的标签。如果检索读的是结构,而不是把它切碎成等长的窗口,那么
+即使正文换了完全不同的措辞,它也能找对地方。
 
-## What it does differently
+## 和常见做法有什么不同
 
-- **An auditable retrieval trace.** Every candidate the walker considered is recorded with its
-  score, the scorer that produced it, whether it was kept or pruned, and why. The trace ships
-  with the answer, so a wrong answer can be debugged by reading the decisions instead of
-  guessing at an embedding space.
-- **A per-sentence evidence ledger.** After the answer is written, each sentence is checked
-  against the text of the sections it cites. Sentences with no citation, or with too little
-  overlap against the cited text, are flagged rather than trusted.
-- **Hybrid routing that degrades to offline.** A pure-Python BM25 router narrows each level
-  first; a model only ever sees a shortlist of candidate sections, never the corpus. With no
-  API key configured the model stage is skipped entirely and the system still answers, with
-  citations, deterministically.
-- **Structure-aware evidence packing.** Retrieved sections are packed into a token budget, so
-  the answerer receives whole sections with their headings rather than arbitrary windows.
-- **A built-in evaluation harness.** The tree walker is scored against a flat fixed-window
-  chunking baseline on the same corpus, with the same scorer, so the comparison is measured
-  rather than asserted.
-- **Token and cost accounting** per query, per call.
+- **可审计的检索轨迹。** 每个被考虑过的候选章节都记录了得分、打分器、以及"保留还是剪枝"的理由。
+  轨迹随答案一起返回,答错了可以直接读决策过程,而不是去猜向量空间里发生了什么。
+- **逐句证据台账。** 答案写完之后,每个句子都会拿回它引用的原文核对。没有引用,或者和引用原文
+  重合度过低的句子,会被标记出来,而不是默认可信。
+- **混合路由,且能降级到离线。** 纯 Python 的 BM25 先对每一层做初筛,模型只看一份短名单,
+  永远看不到整个语料。没有配 API Key 时模型环节直接跳过,系统照样能给出带引用的、确定性的答案。
+- **结构感知的证据打包。** 检索到的章节按 token 预算装进上下文,送进去的是带标题的完整小节,
+  而不是切碎的片段。
+- **内置评测擂台。** 同一份语料、同一个打分器,树推理和平铺固定窗口切分正面对比,结论是**测出来的**,
+  不是声称的。
+- **按次计费与成本核算。** 每次查询的 token 和费用都会统计。
 
-## Benchmark
+## 基准测试
 
-Run with no model configured, so the numbers are free, offline and reproducible
-(`tracerag eval --mode lexical`, 24 questions, 3 documents, `top_k=5`):
+完全离线运行(不配模型),所以结果免费、可复现(`tracerag eval --mode lexical`,24 道题,3 篇文档,`top_k=5`):
 
-| metric | tree walker | naive chunking |
+| 指标 | 树推理 | 朴素切分 |
 | --- | ---: | ---: |
-| recall@5, all 24 cases | **95.8%** | 37.5% |
-| recall@5, 6 multi-hop cases | **83.3%** | 33.3% |
-| evidence tokens sent to the answerer | **663** | 798 |
-| citation support | 100% | n/a |
-| mean nodes visited | 13.0 | n/a |
-| mean latency | <1 ms | n/a |
+| recall@5(全部 24 题) | **95.8%** | 37.5% |
+| recall@5(6 道多跳题) | **83.3%** | 33.3% |
+| 送进答案模型的证据 token | **663** | 798 |
+| 引用支持率 | 100% | n/a |
+| 平均访问节点数 | 13.0 | n/a |
+| 平均延迟 | <1 ms | n/a |
 
-Read this table with the caveat it deserves. The corpus in `data/corpus` is synthetic and
-deliberately built so that headings carry vocabulary the body does not — a real and very
-common property of handbooks, filings and API references, and precisely the case flat
-similarity search is worst at. This measures one failure mode carefully; it is not a claim
-that tree walking wins everywhere. The baseline is not handicapped either: it keeps the
-heading lines in its flattened text, and a window that straddles a boundary counts as a hit
-for the section it partly covers.
+这张表要配上它该有的前提来读。`data/corpus` 里的语料是合成的,而且是**故意**构造成"标题承载语义、
+正文换用不同措辞"——这在手册、年报、API 文档里非常常见,也正是平铺相似度检索最不擅长的场景。
+它是一次针对单一失效模式的严谨测量,不是"树推理在所有场景都赢"的结论。
 
-`citation support` is 100% offline for an uninteresting reason: the offline answerer quotes
-its evidence verbatim, so the ledger is checking quotes against their source. Configure a
-model and the number starts doing real work, because the ledger is then auditing generated
-prose.
+基线也没有被做手脚:它保留了标题行,而且一个跨越章节边界的窗口,只要部分覆盖了目标章节,就算它命中。
 
-## How a query works
+离线时"引用支持率 100%"的原因很无聊:离线回答是逐字引用原文的,所以台账实际上是在校验引文与出处。
+配上模型之后这个数字才有真正的意义,因为那时台账审计的是模型生成的文字。
+
+## 一次查询是怎么走的
 
 ```
-                       build once                         query time
-  file ──► ingest ──► section tree ──► index.json
-                     (hierarchical)                     question
-                                         │                 │
-                                         │                 ▼
-                                         │        ┌─────────────────┐
-                                         │        │  BM25 router    │  per level
-                                         │        └────────┬────────┘
-                                         │                 ▼
-                                         │        ┌─────────────────┐
-                                         └───────►│  model shortlist │  optional
-                                                  └────────┬────────┘
-                                                           ▼
-                                                  selected sections
-                                                           │
-                                                           ▼
-                        answer + [n] markers ◄──── answerer (model or extractive)
-                                                           │
-                                                           ▼
-                                              evidence ledger audits each sentence
+                       构建一次                          查询时
+  文件 ──► 解析 ──► 章节树 ──► index.json
+                    (层级结构)                        问题
+                                         │               │
+                                         │               ▼
+                                         │      ┌─────────────────┐
+                                         │      │  BM25 逐层初筛   │
+                                         │      └────────┬────────┘
+                                         │               ▼
+                                         │      ┌─────────────────┐
+                                         └─────►│  模型筛短名单    │  可选
+                                                └────────┬────────┘
+                                                         ▼
+                                                  选中的章节证据
+                                                         │
+                                                         ▼
+                      答案 + [n] 引用标记 ◄──── 答案生成(模型或抽取式)
+                                                         │
+                                                         ▼
+                                            证据台账逐句审计
 ```
 
-1. **Ingest** walks the source and records which outline path was in force for each block of
-   text. Markdown headings, numbered headings, Chinese chapter markers and short unpunctuated
-   title lines in extracted PDF text are all recognised. Headings are consumed as structure,
-   not kept as body text.
-2. **Build** assembles those outline paths into a tree, assigns stable hierarchical ids
-   (`n1`, `n1.2`, `n1.2.3`), and splits any section larger than 4,000 characters into child
-   windows so leaf granularity stays useful.
-3. **Route** ranks each level's candidates with BM25 over `title + summary`, keeps a beam, and
-   optionally asks a model to drop the ones that cannot answer the question. Ancestor scores
-   propagate downwards, so a strong branch keeps its weaker children alive.
-4. **Answer** packs the surviving sections into a token budget and asks a model for prose with
-   inline `[n]` markers, or extracts the best-matching sentences when no key is configured.
-5. **Audit** splits the answer into sentences, binds each `[n]` marker to the sentence it
-   supports, and scores each sentence against the text of its cited sections.
+1. **解析。** 遍历源文件,记录每一段文字当时处于哪条大纲路径下。Markdown 标题、数字编号标题、
+   中文"第 X 章/节"、以及 PDF 提取文本里"短、无标点、像标题"的行都能识别。标题被当作结构消费掉,
+   不会混进正文。
+2. **建树。** 把大纲路径组装成树,分配稳定的层级 id(`n1`、`n1.2`、`n1.2.3`),并把超过 4000 字符的
+   小节拆成子窗口,保证叶子节点仍然足够细。
+3. **路由。** 每一层的候选先用 BM25 按 `标题 + 摘要` 排序,保留一个 beam,可选地让模型再筛一遍。
+   父节点的分数会向下传递,所以一个强分支能把它下面得分较弱的子节点一起带进视野。
+4. **作答。** 把留下的章节按 token 预算装进上下文,让模型写出带 `[n]` 标记的答案;没有 Key 时改为
+   抽取最匹配的原文句子。
+5. **审计。** 把答案切成句子,把每个 `[n]` 标记绑定到它真正支持的那一句,再逐句和引用章节的原文比对。
 
-### Modes
+### 三种模式
 
-| mode | router | answerer | needs a key |
+| 模式 | 路由 | 作答 | 需要 Key |
 | --- | --- | --- | --- |
-| `lexical` | BM25 only | extractive | no |
-| `hybrid` | BM25 + model shortlist | model, extractive fallback | no |
-| `reasoning` | model sees every candidate at each level | model, extractive fallback | no |
+| `lexical` | 只用 BM25 | 抽取式 | 不需要 |
+| `hybrid` | BM25 + 模型筛短名单 | 模型,失败回退抽取式 | 不需要 |
+| `reasoning` | 模型看到每一层的全部候选 | 模型,失败回退抽取式 | 不需要 |
 
-Every mode works offline. `hybrid` and `reasoning` simply do less when no key is present.
+三种模式都能离线跑通。`hybrid` 和 `reasoning` 在没有 Key 时只是做得少一点,不会报错。
 
-## Quickstart
+## 快速开始
 
 ```bash
 git clone https://github.com/Supereggcat/tracerag
@@ -139,7 +118,7 @@ source .venv/bin/activate
 pip install -e ".[server,dev]"
 ```
 
-Index the bundled corpus and ask a question. No API key required:
+索引自带语料并提问,不需要任何 API Key:
 
 ```bash
 tracerag index data/corpus
@@ -147,31 +126,30 @@ tracerag docs
 tracerag ask "退款到账要多久?" --doc atlas-handbook-656d6142 --trace
 ```
 
-Run the evaluation harness:
+跑一遍评测:
 
 ```bash
 tracerag eval --mode lexical
 tracerag eval --mode lexical --json
 ```
 
-Start the web UI:
+启动网页界面:
 
 ```bash
 tracerag serve --port 8011
-# then open http://127.0.0.1:8011
+# 然后打开 http://127.0.0.1:8011
 ```
 
-### Using a model
+### 接入大模型
 
-Any provider that speaks the OpenAI `/chat/completions` shape works. Nothing is required for
-the offline modes.
+任何兼容 OpenAI `/chat/completions` 协议的服务都可以用。离线模式不需要配置任何东西。
 
 ```bash
 # OpenAI
 export TRACERAG_API_KEY=sk-...
 export TRACERAG_MODEL=gpt-4o-mini
 
-# DeepSeek, Moonshot, Qwen, OpenRouter, vLLM, Ollama, ...
+# DeepSeek、Moonshot、通义千问、OpenRouter、vLLM、Ollama ...
 export TRACERAG_API_KEY=...
 export TRACERAG_BASE_URL=https://api.deepseek.com/v1
 export TRACERAG_MODEL=deepseek-chat
@@ -179,40 +157,40 @@ export TRACERAG_MODEL=deepseek-chat
 tracerag ask "What protects me from a duplicate charge?" --doc orbit-api-notes-ddf28c68 --mode reasoning
 ```
 
-`OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_MODEL` are read as fallbacks. The web UI shows
-the active model in the top bar and falls back to `BM25` when none is configured.
+`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL` 可以作为兜底配置。网页界面顶栏会显示当前生效的模型,
+没配模型时显示 `Offline BM25`。
 
-## CLI
+## 命令行
 
 ```
-tracerag index <paths...>      ingest files or directories
-tracerag docs                  list indexed documents
-tracerag rm <doc_id>           drop one document
-tracerag ask "<question>"      answer from one document
-    --doc <doc_id>             required
+tracerag index <paths...>      解析并索引文件或目录
+tracerag docs                  列出已索引的文档
+tracerag rm <doc_id>           删除一篇文档
+tracerag ask "<question>"      针对单篇文档提问
+    --doc <doc_id>             必填
     --mode lexical|hybrid|reasoning
-    --top-k <n>                sections to keep (default 5)
-    --trace                    print the full retrieval trace
-    --json                     machine-readable output
-tracerag eval                  score against the flat baseline
-    --cases <file>             default eval/questions.jsonl
+    --top-k <n>                保留的证据小节数(默认 5)
+    --trace                    打印完整检索轨迹
+    --json                     输出机器可读格式
+tracerag eval                  与平铺基线对比打分
+    --cases <file>             默认 eval/questions.jsonl
     --mode, --top-k, --json
-tracerag serve                 run the web UI
+tracerag serve                 启动网页界面
     --host, --port, --reload
 ```
 
-## HTTP API
+## HTTP 接口
 
-| method | path | purpose |
+| 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/health` | status, active model, document count |
-| `GET` | `/api/config` | whether a model is configured, available modes |
-| `GET` | `/api/docs` | list indexed documents |
-| `POST` | `/api/docs` | upload and index a document (multipart) |
-| `GET` | `/api/docs/{id}` | document metadata and outline |
-| `GET` | `/api/docs/{id}/tree` | the full section tree |
-| `DELETE` | `/api/docs/{id}` | drop a document |
-| `POST` | `/api/query` | ask a question, returns answer + ledger + trace + usage |
+| `GET` | `/api/health` | 运行状态、当前模型、已索引文档数 |
+| `GET` | `/api/config` | 是否配置了模型、可用模式 |
+| `GET` | `/api/docs` | 列出已索引文档 |
+| `POST` | `/api/docs` | 上传并索引文档(multipart) |
+| `GET` | `/api/docs/{id}` | 文档元信息与大纲 |
+| `GET` | `/api/docs/{id}/tree` | 完整章节树 |
+| `DELETE` | `/api/docs/{id}` | 删除文档 |
+| `POST` | `/api/query` | 提问,返回答案 + 台账 + 轨迹 + 用量 |
 
 ```bash
 curl -s localhost:8011/api/query \
@@ -220,7 +198,7 @@ curl -s localhost:8011/api/query \
   -d '{"question":"退款到账要多久?","doc_id":"atlas-handbook-656d6142","mode":"hybrid","top_k":5}'
 ```
 
-## Python
+## 作为 Python 库
 
 ```python
 from tracerag import Corpus, RetrievalConfig, ask, index_path
@@ -236,85 +214,57 @@ answer = ask(
 )
 
 print(answer.text)
-print(f"supported: {answer.supported_ratio:.0%}")
+print(f"支持率: {answer.supported_ratio:.0%}")
 for entry in answer.ledger:
     print(entry.supported, entry.support, entry.sentence)
 for step in answer.trace:
     print(step.decision, step.node_id, round(step.score, 3), step.rationale)
 ```
 
-## Supported inputs
+## 支持的文件格式
 
-Markdown, plain text, reStructuredText, HTML and PDF. PDFs need `pypdf`, which is a core
-dependency. Scanned PDFs need OCR first; this project does not do OCR.
+Markdown、纯文本、reStructuredText、HTML、PDF。PDF 依赖 `pypdf`,属于核心依赖。扫描版 PDF 需要先做 OCR,
+本项目不包含 OCR。
 
-## Tests
+## 测试
 
 ```bash
 pytest
 ```
 
-33 tests covering tokenisation, outline detection, tree construction and id stability, window
-splitting, retrieval in all three modes, graceful degradation when a model is unreachable,
-context budgeting, ledger auditing, corpus persistence, the HTTP API and the evaluation
-harness.
+33 个用例,覆盖分词、大纲识别、树构建与 id 稳定性、长小节切窗、三种模式的检索、模型不可达时的优雅降级、
+上下文预算、台账审计、语料持久化、HTTP 接口以及评测流程。
 
-## Repository layout
+## 目录结构
 
 ```
 src/tracerag/
-  models.py      typed records shared across modules
-  text.py        CJK-aware tokeniser, sentence splitter, token estimation
-  ingest.py      files -> headed blocks
-  tree.py        blocks -> section tree
-  lexical.py     dependency-free BM25
-  llm.py         OpenAI-compatible client on urllib
-  retrieve.py    the tree walker and its trace
-  answer.py      synthesis and the evidence ledger
-  store.py       on-disk corpus
+  models.py      跨模块共享的类型定义
+  text.py        中英文分词、句子切分、token 估算
+  ingest.py      文件 -> 带大纲路径的文本块
+  tree.py        文本块 -> 章节树
+  lexical.py     零依赖 BM25
+  llm.py         基于 urllib 的 OpenAI 兼容客户端
+  retrieve.py    树推理检索器与检索轨迹
+  answer.py      答案生成与证据台账
+  store.py       磁盘语料存储
   pipeline.py    index_file / index_path / ask
-  evaluate.py    tree walker vs flat chunking
-  baseline.py    the flat chunking baseline
-  webapp.py      FastAPI app
-  cli.py         command line entry point
-web/             no-build web UI
-data/corpus/     three sample documents
-eval/            24 evaluation questions
+  evaluate.py    树推理 vs 平铺切分
+  baseline.py    平铺切分基线
+  webapp.py      FastAPI 应用
+  cli.py         命令行入口
+web/             免构建的网页界面
+data/corpus/     三篇示例文档
+eval/            24 道评测题
 ```
 
-## 中文说明
+## 致谢
 
-**TraceRAG 是一个"不用向量库"的检索增强生成引擎。** 它把文档解析成章节树,让模型像人翻目录
-一样逐层推理找到相关段落,而不是把文档切碎后做相似度搜索。
+- "用层级文档树 + 模型推理导航来替代相似度索引"这个思路,由 **PageIndex**
+  (<https://github.com/VectifyAI/PageIndex>,MIT,Copyright (c) 2025 Vectify AI)推广开来。
+  本项目是独立重写,架构和功能集都不同,没有复制任何源代码。详见 [NOTICE](NOTICE)。
+- 网页界面的图标使用了 [Lucide](https://lucide.dev)(ISC 协议)。
 
-和常见做法相比,它多了三样东西:
+## 许可证
 
-1. **可审计的检索轨迹** —— 每个被考虑过的章节都记录了得分、打分器和"保留/剪枝"的理由,
-   答错了可以直接读决策过程,而不是去猜向量空间里发生了什么。
-2. **逐句证据台账** —— 答案写完后,每个句子都会拿回它引用的原文核对,没有引用或对不上的
-   句子会被明确标红,而不是默认可信。
-3. **零 API Key 也能跑** —— 纯 Python 的 BM25 负责每一层的初筛,没配模型时自动走抽取式
-   回答,带着引用输出,完全离线、结果确定。
-
-```bash
-pip install -e ".[server,dev]"
-tracerag index data/corpus
-tracerag ask "退款到账要多久?" --doc atlas-handbook-656d6142 --trace
-tracerag serve --port 8011
-```
-
-想接大模型时,任何兼容 OpenAI `/chat/completions` 的服务都可以,设置
-`TRACERAG_API_KEY` / `TRACERAG_BASE_URL` / `TRACERAG_MODEL` 即可。
-
-## Credits
-
-- The idea of replacing a similarity index with a hierarchical document tree that a model
-  navigates by reasoning was popularised by **PageIndex**
-  (<https://github.com/VectifyAI/PageIndex>, MIT, Copyright (c) 2025 Vectify AI). This project
-  is an independent re-implementation with a different architecture, a different feature set
-  and no copied source code. See [NOTICE](NOTICE).
-- The web UI vendors [Lucide](https://lucide.dev) for its icon set (ISC License).
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+MIT,详见 [LICENSE](LICENSE)。
