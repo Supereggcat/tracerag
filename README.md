@@ -1,5 +1,7 @@
 # TraceRAG
 
+[![tests](https://github.com/Supereggcat/tracerag/actions/workflows/tests.yml/badge.svg)](https://github.com/Supereggcat/tracerag/actions/workflows/tests.yml)
+
 **Vectorless retrieval that shows its work.**
 
 TraceRAG turns a document into a section tree, walks that tree with reasoning instead of
